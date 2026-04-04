@@ -1,0 +1,15 @@
+[package]
+name = "webcharapong-blip/terminal-rama3"
+version = "0.1.0"
+description = "React app on Wasmer Edge"
+
+[[extensions]]
+name = "static-site"
+
+[fs]
+"/" = "dist"
+
+[[redirects]]
+from = "/**"
+to = "/index.html"
+status = 200
