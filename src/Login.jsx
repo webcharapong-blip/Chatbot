@@ -8,15 +8,19 @@ function Login({ setToken }) {
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
-      // ส่งข้อมูลไปหา Backend (Port 5000)
-      const res = await axios.post('http://localhost:5000/api/auth/login', { username, password });
+      // ✅ เปลี่ยนจาก localhost เป็น URL ของ Render ที่คุณโฮสต์ไว้
+      const API_URL = 'https://chatbot-5x95.onrender.com/api/auth/login';
+      
+      const res = await axios.post(API_URL, { username, password });
       
       // ถ้าผ่าน เก็บ Token ลงเครื่อง และอัปเดต State
       localStorage.setItem('token', res.data.token);
       setToken(res.data.token);
       alert("ยินดีต้อนรับสู่ Terminal Rama3! 🚀");
     } catch (err) {
-      alert("ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง! ❌");
+      // เพิ่มการเช็ค error เพื่อให้รู้ว่าติดที่อะไร
+      console.error("Login Error:", err);
+      alert("ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง! หรือเซิร์ฟเวอร์ขัดข้อง ❌");
     }
   };
 
