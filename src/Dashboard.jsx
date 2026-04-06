@@ -61,7 +61,7 @@ export default function Dashboard({ logout }) {
             </div>
           </div>
 
-          {/* Cards ด้านล่าง: บนมือถือจะหดขนาดฟอนต์ลงเล็กน้อย */}
+          
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 md:gap-4 mt-3 md:mt-6">
             <div className="px-3 py-2 md:px-4 md:py-3 rounded-lg bg-white/5 border border-white/5 text-[8px] md:text-[10px] text-neutral-500 flex justify-between items-center tracking-widest uppercase">
               STORAGE: <span className="text-green-500 font-bold">Optimal</span>
@@ -76,14 +76,13 @@ export default function Dashboard({ logout }) {
         </div>
       </main>
 
-      {/* --- Typebot Bubble: ปรับขนาดให้ไม่บังจอเกินไป --- */}
       <Bubble
         typebot="pattayapal"
         apiHost="https://typebot.io"
         theme={{
           button: {
             backgroundColor: "#f97316",
-            size: "medium" // ปรับขนาดปุ่มเป็น medium บนมือถือจะได้ไม่เกะกะ
+            size: "medium"
           },
           chatWindow: {
             backgroundColor: "#ffffff",
