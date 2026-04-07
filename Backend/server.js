@@ -15,18 +15,15 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-// ─── CORS & Middleware ───
 app.use(cors({
-  origin: ['https://darkgreen-gorilla-736792.hostingersite.com', 'https://terminal21-planner.com', 'http://localhost:5173', 'http://localhost:3000'],
-  credentials: true
+    origin: ['https://darkgreen-gorilla-736792.hostingersite.com', 'https://terminal21-planner.com', 'http://localhost:5173', 'http://localhost:3000'],
+    credentials: true
 }));
-app.use(express.json({ limit: '50mb' }));
+app.use(express.json({ limit: '50mb' })); 
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// ─── เชื่อมต่อ MongoDB ───
 mongoose.connect(process.env.MONGO_URI).then(() => console.log('MongoDB Connected! ✅'));
 
-// ─── Schemas ───
 const UserSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true },
@@ -46,7 +43,6 @@ const DashboardSchema = new mongoose.Schema({
 });
 const Dashboard = mongoose.models.Dashboard || mongoose.model('Dashboard', DashboardSchema);
 
-// ─── ฟังก์ชันช่วยอัปโหลดไป Cloudinary ───
 const uploadToCloudinary = async (base64Img) => {
   if (!base64Img || base64Img.startsWith('http')) return base64Img;
   try {
@@ -58,7 +54,6 @@ const uploadToCloudinary = async (base64Img) => {
   }
 };
 
-// ─── Auth Routes ───
 app.post('/api/auth/register', async (req, res) => {
   try {
     const { username, password, role } = req.body;
@@ -82,7 +77,7 @@ app.post('/api/auth/login', async (req, res) => {
   } catch (error) { res.status(500).json({ message: 'Server Error' }); }
 });
 
-// ─── Dashboard Routes ───
+// ดึงข้อมูลรายเดือน
 app.get('/api/dashboard', async (req, res) => {
   try {
     const data = await Dashboard.findOne({ month: req.query.month });
@@ -90,11 +85,20 @@ app.get('/api/dashboard', async (req, res) => {
   } catch (error) { res.status(500).json({ error: 'Server Error' }); }
 });
 
+// ✨ 🆕 ดึงรายชื่อเดือน "ทั้งหมด" ที่เคยบันทึกไว้ ✨
+app.get('/api/dashboards/all', async (req, res) => {
+  try {
+    const data = await Dashboard.find({}, 'month').sort({ month: -1 }); // ดึงมาแค่ฟิลด์ month เรียงจากใหม่ไปเก่า
+    res.json(data);
+  } catch (error) { res.status(500).json({ error: 'Server Error' }); }
+});
+
+// บันทึกข้อมูล
 app.post('/api/dashboard', async (req, res) => {
   try {
     const { month, kpis, topOrganic, topLike, topAds } = req.body;
     const uploadImages = async (list) => Promise.all(list.map(async (item) => ({ ...item, image: await uploadToCloudinary(item.image) })));
-
+    
     const finalOrganic = await uploadImages(topOrganic || []);
     const finalLike = await uploadImages(topLike || []);
     const finalAds = await uploadImages(topAds || []);
@@ -104,6 +108,18 @@ app.post('/api/dashboard', async (req, res) => {
     );
     res.json({ message: 'บันทึกข้อมูลและอัปโหลดรูปสำเร็จ!', data });
   } catch (error) { res.status(500).json({ error: 'Server Error' }); }
+});
+
+// ลบข้อมูลรายเดือน
+app.delete('/api/dashboard', async (req, res) => {
+  try {
+    const month = req.query.month;
+    if (!month) return res.status(400).json({ error: 'กรุณาระบุเดือน' });
+    await Dashboard.findOneAndDelete({ month: month });
+    res.json({ message: 'ลบข้อมูลสำเร็จ' });
+  } catch (error) {
+    res.status(500).json({ error: 'Server Error' });
+  }
 });
 
 app.listen(process.env.PORT || 5000, () => console.log(`Server running 🚀`));

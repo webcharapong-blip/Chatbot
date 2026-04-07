@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import axios from 'axios';
-import DashboardView from './DashboardView'; // นำเข้าหน้า Dashboard มาเพื่อทำ Preview
+import DashboardView from './DashboardView';
+import ManageData from './ManageData'; // นำเข้าหน้าจัดการข้อมูล
 
 const getBase64 = (file) => {
   return new Promise((resolve, reject) => {
@@ -22,49 +23,85 @@ export default function Editor({ logout }) {
   const [newLike, setNewLike] = useState({ name: '', score: 0, image: '' });
   const [newAds, setNewAds] = useState({ name: '', cost: 0, metricValue: 0, metricType: 'Reach', image: '' });
 
-  // State สำหรับควบคุมการแสดงผลโหมด Preview
-  const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const [currentView, setCurrentView] = useState('editor');
 
   const API_URL = 'https://chatbot-5x95.onrender.com/api/dashboard';
 
-  useEffect(() => {
-    axios
-      .get(`${API_URL}?month=${month}`)
-      .then((res) => {
-        const data = res.data;
-        setTopOrganic(data.topOrganic || []);
-        setTopLike(data.topLike || []);
-        setTopAds(data.topAds || []);
-      })
-      .catch((err) => console.error(err));
-  }, [month]);
+  // ❌ เอา useEffect ที่ดึงข้อมูลอัตโนมัติออกไปแล้ว ❌
+  // หน้าจอจะโล่งเสมอเมื่อรีเฟรช!
 
-  const handleSaveData = async () => {
+  // ✨ 🆕 ฟังก์ชันนี้จะถูกเรียกใช้ "เฉพาะตอนที่กดปุ่มแก้ไข" จากหน้า ManageData เท่านั้น
+  const handleEditData = async (selectedMonth) => {
     try {
-      await axios.post(API_URL, { month, topOrganic, topLike, topAds });
-      alert(`💾 บันทึกข้อมูลประจำเดือน ${month} เรียบร้อยแล้ว!`);
+      const res = await axios.get(`${API_URL}?month=${selectedMonth}`);
+      const data = res.data;
+      
+      setMonth(selectedMonth); // เปลี่ยนเดือนให้ตรงกับที่เลือก
+      setTopOrganic(data.topOrganic || []);
+      setTopLike(data.topLike || []);
+      setTopAds(data.topAds || []);
+      
+      setCurrentView('editor'); // สลับกลับมาหน้า Editor
     } catch (error) {
-      alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+      console.error('Error fetching data:', error);
+      alert('ไม่สามารถดึงข้อมูลได้');
     }
   };
 
-  if (isPreviewMode) {
+  // ฟังก์ชันบันทึกข้อมูล พร้อมเคลียร์หน้าจอเริ่มใหม่
+  const handleSaveData = async () => {
+    try {
+      await axios.post(API_URL, { 
+        month: month, 
+        topOrganic: topOrganic, 
+        topLike: topLike, 
+        topAds: topAds 
+      });
+      
+      alert(`💾 บันทึกข้อมูลประจำเดือน ${month} เรียบร้อยแล้ว!\nระบบเคลียร์หน้าจอให้พร้อมสำหรับเริ่มบันทึกใหม่ครับ`);
+      
+      // เคลียร์ข้อมูลหน้าจอทั้งหมด เพื่อเตรียมกรอกใหม่
+      setTopOrganic([]);
+      setTopLike([]);
+      setTopAds([]);
+      setNewOrganic({ name: '', score: 0, image: '' });
+      setNewLike({ name: '', score: 0, image: '' });
+      setNewAds({ name: '', cost: 0, metricValue: 0, metricType: 'Reach', image: '' });
+
+    } catch (error) {
+      alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+      console.error(error);
+    }
+  };
+
+  // ---------------------------------------------------------
+  // ควบคุมการแสดงผลหน้าจอ (Routing)
+  // ---------------------------------------------------------
+  if (currentView === 'preview') {
+    return <DashboardView logout={logout} onBack={() => setCurrentView('editor')} />;
+  }
+
+  if (currentView === 'manage') {
     return (
-      <DashboardView 
-        logout={logout} 
-        onBack={() => setIsPreviewMode(false)}
+      <ManageData 
+        onBack={() => setCurrentView('editor')} 
+        onEdit={handleEditData} // ส่งฟังก์ชันดึงข้อมูลไปให้ปุ่ม "แก้ไข"
       />
     );
   }
 
-  // ------------------------- โหมด Editor ปกติ -------------------------
+  // ---------------------------------------------------------
+  // โหมด Editor หลัก
+  // ---------------------------------------------------------
   return (
     <div className="min-h-screen bg-[#050505] text-neutral-100 p-6 pb-32 font-sans">
       <div className="max-w-6xl mx-auto space-y-8">
         
-        {/* Header */}
+        {/* === Header === */}
         <div className="flex justify-between items-center border-b border-neutral-800 pb-4">
-          <h1 className="text-3xl font-bold text-white">⚙️ Editor Mode</h1>
+          <h1 className="text-3xl font-bold text-white">
+            ⚙️ Editor Mode
+          </h1>
           <div className="flex items-center space-x-4 bg-neutral-900 p-2 rounded-lg border border-neutral-800">
             <input
               type="month"
@@ -72,12 +109,21 @@ export default function Editor({ logout }) {
               onChange={(e) => setMonth(e.target.value)}
               className="bg-transparent text-white p-2 outline-none cursor-pointer"
             />
+            
             <button
-              onClick={() => setIsPreviewMode(true)}
+              onClick={() => setCurrentView('manage')}
+              className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-md text-sm font-bold shadow-lg transition"
+            >
+              🛠️ จัดการข้อมูลเดิม
+            </button>
+
+            <button
+              onClick={() => setCurrentView('preview')}
               className="px-6 py-2 bg-blue-600 hover:bg-blue-500 rounded-md text-sm font-bold shadow-lg transition"
             >
-              👁️ Preview แดชบอร์ด
+              👁️ Preview
             </button>
+            
             <button
               onClick={logout}
               className="px-6 py-2 bg-red-600 hover:bg-red-700 rounded-md text-sm font-bold shadow-lg transition"
@@ -87,7 +133,7 @@ export default function Editor({ logout }) {
           </div>
         </div>
 
-        {/* 1. TOP Organic Posts */}
+        {/* === Section 1: TOP Organic Posts === */}
         <RankingSection
           title="🌱 1. เพิ่ม TOP Organic Posts"
           list={topOrganic}
@@ -96,7 +142,7 @@ export default function Editor({ logout }) {
           setNewItem={setNewOrganic}
         />
 
-        {/* 2. Top Like Of Month */}
+        {/* === Section 2: Top Like Of Month === */}
         <RankingSection
           title="❤️ 2. เพิ่ม Top Like Of Month"
           list={topLike}
@@ -105,7 +151,7 @@ export default function Editor({ logout }) {
           setNewItem={setNewLike}
         />
 
-        {/* 3. Top Advertising (Ads) */}
+        {/* === Section 3: Top Advertising (Ads) === */}
         <AdsRankingSection
           title="📢 3. เพิ่ม Top Advertising (Ads)"
           list={topAds}
@@ -114,23 +160,24 @@ export default function Editor({ logout }) {
           setNewItem={setNewAds}
         />
 
-        {/* ปุ่ม Save */}
+        {/* === Footer ปุ่มบันทึก === */}
         <div className="fixed bottom-0 left-0 w-full bg-[#0a0a0a]/90 backdrop-blur-md border-t border-neutral-800 p-6 flex justify-center z-50">
           <button
             onClick={handleSaveData}
-            className="px-16 py-4 bg-blue-600 hover:bg-blue-500 text-white font-bold text-lg rounded-full shadow-2xl transition transform hover:-translate-y-1"
+            className="px-20 py-4 bg-blue-600 hover:bg-blue-500 text-white font-bold text-lg rounded-full shadow-2xl transition transform hover:-translate-y-1"
           >
-            💾 บันทึกข้อมูลประจำเดือน {month}
+            💾 บันทึกข้อมูลและเริ่มใหม่
           </button>
         </div>
+
       </div>
     </div>
   );
 }
 
-// -------------------------------------------------------------------------
-// Component ย่อย: สำหรับ Organic / Likes
-// -------------------------------------------------------------------------
+// =========================================================================
+// Component ย่อย: RankingSection (Organic / Likes)
+// =========================================================================
 function RankingSection({ title, list, setList, newItem, setNewItem }) {
   const dragItem = useRef(null);
   const dragOverItem = useRef(null);
@@ -153,14 +200,24 @@ function RankingSection({ title, list, setList, newItem, setNewItem }) {
   };
 
   const handleAdd = () => {
-    if (!newItem.name) return;
+    if (!newItem.name) {
+      alert("กรุณากรอกชื่อคอนเทนต์ก่อนเพิ่ม");
+      return;
+    }
     setList([...list, newItem]);
     setNewItem({ name: '', score: 0, image: '' });
   };
 
+  const handleRemove = (indexToRemove) => {
+    const updatedList = list.filter((_, index) => index !== indexToRemove);
+    setList(updatedList);
+  };
+
   return (
     <section className="bg-neutral-900 p-8 rounded-2xl border border-neutral-800 shadow-xl">
-      <h2 className="text-xl font-bold mb-6 text-green-400">{title}</h2>
+      <h2 className="text-xl font-bold mb-6 text-green-400">
+        {title}
+      </h2>
       
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <input
@@ -170,6 +227,7 @@ function RankingSection({ title, list, setList, newItem, setNewItem }) {
           onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
           className="bg-[#0a0a0a] border border-neutral-700 rounded-lg p-4 text-white outline-none"
         />
+        
         <input
           type="number"
           placeholder="ยอด (Views/Likes)"
@@ -178,13 +236,11 @@ function RankingSection({ title, list, setList, newItem, setNewItem }) {
           className="bg-[#0a0a0a] border border-neutral-700 rounded-lg p-4 text-white outline-none"
         />
         
-        {/* ✨ ออกแบบปุ่มอัปโหลดรูปภาพใหม่ ✨ */}
         <label className="flex items-center justify-center w-full bg-[#0a0a0a] border-2 border-dashed border-neutral-700 rounded-lg p-4 cursor-pointer hover:bg-neutral-800 hover:border-emerald-500 transition duration-200 group">
-          <span className="text-xl mr-2 group-hover:scale-110 transition-transform">📸</span>
+          <span className="text-xl mr-2">📸</span>
           <span className={`text-sm font-medium transition-colors truncate ${newItem.image ? 'text-emerald-400' : 'text-neutral-400 group-hover:text-emerald-400'}`}>
             {newItem.image ? 'มีรูปภาพแล้ว (คลิกเปลี่ยน)' : 'อัปโหลดรูปภาพ'}
           </span>
-          {/* ซ่อน input แบบเดิมไว้ */}
           <input
             type="file"
             accept="image/*"
@@ -213,6 +269,13 @@ function RankingSection({ title, list, setList, newItem, setNewItem }) {
             </tr>
           </thead>
           <tbody className="divide-y divide-neutral-800">
+            {list.length === 0 && (
+              <tr>
+                <td colSpan="5" className="text-center p-8 text-neutral-500">
+                  ยังไม่มีข้อมูลในตาราง
+                </td>
+              </tr>
+            )}
             {list.map((item, index) => (
               <tr
                 key={index}
@@ -228,20 +291,15 @@ function RankingSection({ title, list, setList, newItem, setNewItem }) {
                 </td>
                 <td className="p-4">
                   {item.image ? (
-                    <img src={item.image} className="h-14 w-14 object-cover rounded shadow-md" alt="img" />
+                    <img src={item.image} className="h-14 w-14 object-cover rounded shadow-md" alt="post preview" />
                   ) : (
-                    <div className="h-14 w-14 bg-neutral-800 rounded flex items-center justify-center text-[10px] text-neutral-500">
-                      No Img
-                    </div>
+                    <div className="h-14 w-14 bg-neutral-800 rounded flex items-center justify-center text-[10px] text-neutral-500">No Img</div>
                   )}
                 </td>
-                <td className="p-4 font-medium">{item.name}</td>
+                <td className="p-4 font-medium text-white">{item.name}</td>
                 <td className="p-4 text-emerald-400 text-lg font-mono">{item.score?.toLocaleString()}</td>
                 <td className="p-4 text-center">
-                  <button
-                    onClick={() => setList(list.filter((_, i) => i !== index))}
-                    className="text-red-500 hover:text-red-400 font-bold bg-red-500/10 px-3 py-1 rounded"
-                  >
+                  <button onClick={() => handleRemove(index)} className="text-red-500 hover:text-white hover:bg-red-600 border border-red-500/50 px-3 py-1 rounded transition font-bold">
                     ลบ
                   </button>
                 </td>
@@ -254,9 +312,9 @@ function RankingSection({ title, list, setList, newItem, setNewItem }) {
   );
 }
 
-// -------------------------------------------------------------------------
-// Component ย่อย: สำหรับ Ads
-// -------------------------------------------------------------------------
+// =========================================================================
+// Component ย่อย: AdsRankingSection (Ads)
+// =========================================================================
 function AdsRankingSection({ title, list, setList, newItem, setNewItem }) {
   const dragItem = useRef(null);
   const dragOverItem = useRef(null);
@@ -279,14 +337,24 @@ function AdsRankingSection({ title, list, setList, newItem, setNewItem }) {
   };
 
   const handleAdd = () => {
-    if (!newItem.name) return;
+    if (!newItem.name) {
+      alert("กรุณากรอกชื่อแคมเปญก่อนเพิ่ม");
+      return;
+    }
     setList([...list, newItem]);
     setNewItem({ name: '', cost: 0, metricValue: 0, metricType: 'Reach', image: '' });
   };
 
+  const handleRemove = (indexToRemove) => {
+    const updatedList = list.filter((_, index) => index !== indexToRemove);
+    setList(updatedList);
+  };
+
   return (
     <section className="bg-neutral-900 p-8 rounded-2xl border border-neutral-800 shadow-xl">
-      <h2 className="text-xl font-bold mb-6 text-blue-400">{title}</h2>
+      <h2 className="text-xl font-bold mb-6 text-blue-400">
+        {title}
+      </h2>
       
       <div className="flex flex-col gap-4 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -299,18 +367,19 @@ function AdsRankingSection({ title, list, setList, newItem, setNewItem }) {
           />
           <input
             type="number"
-            placeholder="Cost"
+            placeholder="Cost (ค่าใช้จ่าย)"
             value={newItem.cost || ''}
             onChange={(e) => setNewItem({ ...newItem, cost: Number(e.target.value) })}
             className="bg-[#0a0a0a] border border-neutral-700 rounded-lg p-4 text-white outline-none"
           />
           <input
             type="number"
-            placeholder="ผลลัพธ์"
+            placeholder="ผลลัพธ์ตัวเลข"
             value={newItem.metricValue || ''}
             onChange={(e) => setNewItem({ ...newItem, metricValue: Number(e.target.value) })}
             className="bg-[#0a0a0a] border border-neutral-700 rounded-lg p-4 text-white outline-none"
           />
+          
           <select
             value={newItem.metricType}
             onChange={(e) => setNewItem({ ...newItem, metricType: e.target.value })}
@@ -319,13 +388,13 @@ function AdsRankingSection({ title, list, setList, newItem, setNewItem }) {
             <option value="Reach" className="bg-[#111] text-white">Reach</option>
             <option value="Follows" className="bg-[#111] text-white">Follows</option>
             <option value="Likes" className="bg-[#111] text-white">Likes</option>
+            <option value="Engagement" className="bg-[#111] text-white">Engagement</option>
           </select>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* ✨ ออกแบบปุ่มอัปโหลดรูปภาพใหม่ (ฝั่ง Ads) ✨ */}
           <label className="flex items-center justify-center w-full bg-[#0a0a0a] border-2 border-dashed border-neutral-700 rounded-lg p-4 cursor-pointer hover:bg-neutral-800 hover:border-blue-500 transition duration-200 group">
-            <span className="text-xl mr-2 group-hover:scale-110 transition-transform">📸</span>
+            <span className="text-xl mr-2">📸</span>
             <span className={`text-sm font-medium transition-colors truncate ${newItem.image ? 'text-blue-400' : 'text-neutral-400 group-hover:text-blue-400'}`}>
               {newItem.image ? 'มีรูปภาพแล้ว (คลิกเปลี่ยน)' : 'อัปโหลดรูปภาพแคมเปญ'}
             </span>
@@ -359,6 +428,13 @@ function AdsRankingSection({ title, list, setList, newItem, setNewItem }) {
             </tr>
           </thead>
           <tbody className="divide-y divide-neutral-800">
+            {list.length === 0 && (
+              <tr>
+                <td colSpan="6" className="text-center p-8 text-neutral-500">
+                  ยังไม่มีข้อมูลในตาราง
+                </td>
+              </tr>
+            )}
             {list.map((item, index) => (
               <tr
                 key={index}
@@ -374,26 +450,19 @@ function AdsRankingSection({ title, list, setList, newItem, setNewItem }) {
                 </td>
                 <td className="p-4">
                   {item.image ? (
-                    <img src={item.image} className="h-14 w-14 object-cover rounded shadow-md" alt="img" />
+                    <img src={item.image} className="h-14 w-14 object-cover rounded shadow-md" alt="ad preview" />
                   ) : (
-                    <div className="h-14 w-14 bg-neutral-800 rounded flex items-center justify-center text-[10px] text-neutral-500">
-                      No Img
-                    </div>
+                    <div className="h-14 w-14 bg-neutral-800 rounded flex items-center justify-center text-[10px] text-neutral-500">No Img</div>
                   )}
                 </td>
-                <td className="p-4 font-medium">{item.name}</td>
-                <td className="p-4 text-orange-400 text-lg font-mono">
-                  {item.cost?.toLocaleString() || 0}
-                </td>
+                <td className="p-4 font-medium text-white">{item.name}</td>
+                <td className="p-4 text-orange-400 text-lg font-mono">{item.cost?.toLocaleString() || 0}</td>
                 <td className="p-4 text-blue-400 text-lg font-mono">
                   {item.metricValue?.toLocaleString() || 0}
                   <span className="text-sm text-neutral-500 ml-2">{item.metricType}</span>
                 </td>
                 <td className="p-4 text-center">
-                  <button
-                    onClick={() => setList(list.filter((_, i) => i !== index))}
-                    className="text-red-500 hover:text-red-400 font-bold bg-red-500/10 px-3 py-1 rounded"
-                  >
+                  <button onClick={() => handleRemove(index)} className="text-red-500 hover:text-white hover:bg-red-600 border border-red-500/50 px-3 py-1 rounded transition font-bold">
                     ลบ
                   </button>
                 </td>
