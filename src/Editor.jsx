@@ -1,7 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import DashboardView from './DashboardView';
-import ManageData from './ManageData'; // นำเข้าหน้าจัดการข้อมูล
+import ManageData from './ManageData';
 
 const getBase64 = (file) => {
   return new Promise((resolve, reject) => {
@@ -27,21 +27,18 @@ export default function Editor({ logout }) {
 
   const API_URL = 'https://chatbot-5x95.onrender.com/api/dashboard';
 
-  // ❌ เอา useEffect ที่ดึงข้อมูลอัตโนมัติออกไปแล้ว ❌
-  // หน้าจอจะโล่งเสมอเมื่อรีเฟรช!
-
-  // ✨ 🆕 ฟังก์ชันนี้จะถูกเรียกใช้ "เฉพาะตอนที่กดปุ่มแก้ไข" จากหน้า ManageData เท่านั้น
+  // ฟังก์ชันนี้ถูกเรียกเมื่อกดปุ่ม "แก้ไข" จากหน้า ManageData
   const handleEditData = async (selectedMonth) => {
     try {
       const res = await axios.get(`${API_URL}?month=${selectedMonth}`);
       const data = res.data;
       
-      setMonth(selectedMonth); // เปลี่ยนเดือนให้ตรงกับที่เลือก
+      setMonth(selectedMonth);
       setTopOrganic(data.topOrganic || []);
       setTopLike(data.topLike || []);
       setTopAds(data.topAds || []);
       
-      setCurrentView('editor'); // สลับกลับมาหน้า Editor
+      setCurrentView('editor');
     } catch (error) {
       console.error('Error fetching data:', error);
       alert('ไม่สามารถดึงข้อมูลได้');
@@ -60,7 +57,6 @@ export default function Editor({ logout }) {
       
       alert(`💾 บันทึกข้อมูลประจำเดือน ${month} เรียบร้อยแล้ว!\nระบบเคลียร์หน้าจอให้พร้อมสำหรับเริ่มบันทึกใหม่ครับ`);
       
-      // เคลียร์ข้อมูลหน้าจอทั้งหมด เพื่อเตรียมกรอกใหม่
       setTopOrganic([]);
       setTopLike([]);
       setTopAds([]);
@@ -85,7 +81,8 @@ export default function Editor({ logout }) {
     return (
       <ManageData 
         onBack={() => setCurrentView('editor')} 
-        onEdit={handleEditData} // ส่งฟังก์ชันดึงข้อมูลไปให้ปุ่ม "แก้ไข"
+        onEdit={handleEditData} 
+        logout={logout}
       />
     );
   }
@@ -94,39 +91,40 @@ export default function Editor({ logout }) {
   // โหมด Editor หลัก
   // ---------------------------------------------------------
   return (
-    <div className="min-h-screen bg-[#050505] text-neutral-100 p-6 pb-32 font-sans">
+    <div className="min-h-screen bg-[#050505] text-neutral-100 p-4 md:p-6 pb-32 font-sans">
       <div className="max-w-6xl mx-auto space-y-8">
         
         {/* === Header === */}
-        <div className="flex justify-between items-center border-b border-neutral-800 pb-4">
-          <h1 className="text-3xl font-bold text-white">
+        <div className="flex flex-col lg:flex-row justify-between items-center border-b border-neutral-800 pb-4 gap-4">
+          <h1 className="text-3xl font-bold text-white text-center w-full lg:w-auto">
             ⚙️ Editor Mode
           </h1>
-          <div className="flex items-center space-x-4 bg-neutral-900 p-2 rounded-lg border border-neutral-800">
+          
+          <div className="flex flex-wrap items-center justify-center gap-2 md:gap-4 bg-neutral-900 p-2 rounded-lg border border-neutral-800 w-full lg:w-auto">
             <input
               type="month"
               value={month}
               onChange={(e) => setMonth(e.target.value)}
-              className="bg-transparent text-white p-2 outline-none cursor-pointer"
+              className="bg-transparent text-white p-2 outline-none cursor-pointer border border-neutral-700 rounded-md"
             />
             
             <button
               onClick={() => setCurrentView('manage')}
-              className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-md text-sm font-bold shadow-lg transition"
+              className="px-4 py-2 md:px-6 md:py-2 bg-emerald-600 hover:bg-emerald-500 rounded-md text-xs md:text-sm font-bold shadow-lg transition"
             >
               🛠️ จัดการข้อมูลเดิม
             </button>
 
             <button
               onClick={() => setCurrentView('preview')}
-              className="px-6 py-2 bg-blue-600 hover:bg-blue-500 rounded-md text-sm font-bold shadow-lg transition"
+              className="px-4 py-2 md:px-6 md:py-2 bg-blue-600 hover:bg-blue-500 rounded-md text-xs md:text-sm font-bold shadow-lg transition"
             >
               👁️ Preview
             </button>
             
             <button
               onClick={logout}
-              className="px-6 py-2 bg-red-600 hover:bg-red-700 rounded-md text-sm font-bold shadow-lg transition"
+              className="px-4 py-2 md:px-6 md:py-2 bg-red-600 hover:bg-red-500 text-white rounded-md text-xs md:text-sm font-bold shadow-lg transition"
             >
               Logout
             </button>
@@ -161,10 +159,10 @@ export default function Editor({ logout }) {
         />
 
         {/* === Footer ปุ่มบันทึก === */}
-        <div className="fixed bottom-0 left-0 w-full bg-[#0a0a0a]/90 backdrop-blur-md border-t border-neutral-800 p-6 flex justify-center z-50">
+        <div className="fixed bottom-0 left-0 w-full bg-[#0a0a0a]/90 backdrop-blur-md border-t border-neutral-800 p-4 md:p-6 flex justify-center z-50">
           <button
             onClick={handleSaveData}
-            className="px-20 py-4 bg-blue-600 hover:bg-blue-500 text-white font-bold text-lg rounded-full shadow-2xl transition transform hover:-translate-y-1"
+            className="px-12 md:px-20 py-3 md:py-4 bg-blue-600 hover:bg-blue-500 text-white font-bold text-md md:text-lg rounded-full shadow-2xl transition transform hover:-translate-y-1"
           >
             💾 บันทึกข้อมูลและเริ่มใหม่
           </button>
@@ -176,7 +174,7 @@ export default function Editor({ logout }) {
 }
 
 // =========================================================================
-// Component ย่อย: RankingSection (Organic / Likes)
+// Component ย่อย: RankingSection
 // =========================================================================
 function RankingSection({ title, list, setList, newItem, setNewItem }) {
   const dragItem = useRef(null);
@@ -214,8 +212,8 @@ function RankingSection({ title, list, setList, newItem, setNewItem }) {
   };
 
   return (
-    <section className="bg-neutral-900 p-8 rounded-2xl border border-neutral-800 shadow-xl">
-      <h2 className="text-xl font-bold mb-6 text-green-400">
+    <section className="bg-neutral-900 p-4 md:p-8 rounded-2xl border border-neutral-800 shadow-xl">
+      <h2 className="text-lg md:text-xl font-bold mb-6 text-green-400">
         {title}
       </h2>
       
@@ -225,7 +223,7 @@ function RankingSection({ title, list, setList, newItem, setNewItem }) {
           placeholder="ชื่อคอนเทนต์"
           value={newItem.name}
           onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
-          className="bg-[#0a0a0a] border border-neutral-700 rounded-lg p-4 text-white outline-none"
+          className="bg-[#0a0a0a] border border-neutral-700 rounded-lg p-3 text-white outline-none w-full"
         />
         
         <input
@@ -233,75 +231,48 @@ function RankingSection({ title, list, setList, newItem, setNewItem }) {
           placeholder="ยอด (Views/Likes)"
           value={newItem.score || ''}
           onChange={(e) => setNewItem({ ...newItem, score: Number(e.target.value) })}
-          className="bg-[#0a0a0a] border border-neutral-700 rounded-lg p-4 text-white outline-none"
+          className="bg-[#0a0a0a] border border-neutral-700 rounded-lg p-3 text-white outline-none w-full"
         />
         
-        <label className="flex items-center justify-center w-full bg-[#0a0a0a] border-2 border-dashed border-neutral-700 rounded-lg p-4 cursor-pointer hover:bg-neutral-800 hover:border-emerald-500 transition duration-200 group">
+        <label className="flex items-center justify-center w-full bg-[#0a0a0a] border-2 border-dashed border-neutral-700 rounded-lg p-3 cursor-pointer hover:bg-neutral-800 hover:border-emerald-500 transition duration-200 group">
           <span className="text-xl mr-2">📸</span>
-          <span className={`text-sm font-medium transition-colors truncate ${newItem.image ? 'text-emerald-400' : 'text-neutral-400 group-hover:text-emerald-400'}`}>
-            {newItem.image ? 'มีรูปภาพแล้ว (คลิกเปลี่ยน)' : 'อัปโหลดรูปภาพ'}
+          <span className={`text-xs md:text-sm font-medium transition-colors truncate ${newItem.image ? 'text-emerald-400' : 'text-neutral-400 group-hover:text-emerald-400'}`}>
+            {newItem.image ? 'มีรูปภาพแล้ว' : 'อัปโหลดรูปภาพ'}
           </span>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleFileChange}
-            className="hidden"
-          />
+          <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
         </label>
 
         <button
           onClick={handleAdd}
-          className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg p-4 transition"
+          className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg p-3 transition w-full"
         >
           + เพิ่มเข้าตาราง
         </button>
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-neutral-800">
-        <table className="w-full text-left text-sm text-neutral-300">
+        <table className="w-full text-left text-sm text-neutral-300 min-w-[500px]">
           <thead className="bg-neutral-950 text-neutral-400 uppercase text-xs">
             <tr>
-              <th className="p-4 w-24 text-center">อันดับ</th>
-              <th className="p-4 w-24">รูปภาพ</th>
+              <th className="p-4 w-16 md:w-24 text-center">อันดับ</th>
+              <th className="p-4 w-16 md:w-24">รูปภาพ</th>
               <th className="p-4">ชื่อคอนเทนต์</th>
               <th className="p-4">ยอด</th>
-              <th className="p-4 w-24 text-center">จัดการ</th>
+              <th className="p-4 w-20 md:w-24 text-center">จัดการ</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-neutral-800">
             {list.length === 0 && (
-              <tr>
-                <td colSpan="5" className="text-center p-8 text-neutral-500">
-                  ยังไม่มีข้อมูลในตาราง
-                </td>
-              </tr>
+              <tr><td colSpan="5" className="text-center p-8 text-neutral-500">ยังไม่มีข้อมูลในตาราง</td></tr>
             )}
             {list.map((item, index) => (
-              <tr
-                key={index}
-                draggable
-                onDragStart={() => (dragItem.current = index)}
-                onDragEnter={() => (dragOverItem.current = index)}
-                onDragEnd={handleSort}
-                onDragOver={(e) => e.preventDefault()}
-                className="hover:bg-neutral-800 transition cursor-move bg-neutral-900 group"
-              >
-                <td className="p-4 text-center font-bold text-white">
-                  <span className="text-neutral-600 mr-2">☰</span> #{index + 1}
-                </td>
-                <td className="p-4">
-                  {item.image ? (
-                    <img src={item.image} className="h-14 w-14 object-cover rounded shadow-md" alt="post preview" />
-                  ) : (
-                    <div className="h-14 w-14 bg-neutral-800 rounded flex items-center justify-center text-[10px] text-neutral-500">No Img</div>
-                  )}
-                </td>
+              <tr key={index} draggable onDragStart={() => (dragItem.current = index)} onDragEnter={() => (dragOverItem.current = index)} onDragEnd={handleSort} onDragOver={(e) => e.preventDefault()} className="hover:bg-neutral-800 transition cursor-move bg-neutral-900 group">
+                <td className="p-4 text-center font-bold text-white"><span className="text-neutral-600 mr-2">☰</span> #{index + 1}</td>
+                <td className="p-4">{item.image ? <img src={item.image} className="h-10 w-10 md:h-14 md:w-14 object-cover rounded shadow-md" alt="post preview" /> : <div className="h-10 w-10 md:h-14 md:w-14 bg-neutral-800 rounded flex items-center justify-center text-[8px] md:text-[10px] text-neutral-500">No Img</div>}</td>
                 <td className="p-4 font-medium text-white">{item.name}</td>
-                <td className="p-4 text-emerald-400 text-lg font-mono">{item.score?.toLocaleString()}</td>
+                <td className="p-4 text-emerald-400 text-md md:text-lg font-mono">{item.score?.toLocaleString()}</td>
                 <td className="p-4 text-center">
-                  <button onClick={() => handleRemove(index)} className="text-red-500 hover:text-white hover:bg-red-600 border border-red-500/50 px-3 py-1 rounded transition font-bold">
-                    ลบ
-                  </button>
+                  <button onClick={() => handleRemove(index)} className="text-red-500 hover:text-white hover:bg-red-600 border border-red-500/50 px-3 py-1 rounded transition font-bold text-xs md:text-sm">ลบ</button>
                 </td>
               </tr>
             ))}
@@ -313,7 +284,7 @@ function RankingSection({ title, list, setList, newItem, setNewItem }) {
 }
 
 // =========================================================================
-// Component ย่อย: AdsRankingSection (Ads)
+// Component ย่อย: AdsRankingSection
 // =========================================================================
 function AdsRankingSection({ title, list, setList, newItem, setNewItem }) {
   const dragItem = useRef(null);
@@ -351,40 +322,15 @@ function AdsRankingSection({ title, list, setList, newItem, setNewItem }) {
   };
 
   return (
-    <section className="bg-neutral-900 p-8 rounded-2xl border border-neutral-800 shadow-xl">
-      <h2 className="text-xl font-bold mb-6 text-blue-400">
-        {title}
-      </h2>
+    <section className="bg-neutral-900 p-4 md:p-8 rounded-2xl border border-neutral-800 shadow-xl">
+      <h2 className="text-lg md:text-xl font-bold mb-6 text-blue-400">{title}</h2>
       
       <div className="flex flex-col gap-4 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <input
-            type="text"
-            placeholder="ชื่อแคมเปญ"
-            value={newItem.name}
-            onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
-            className="bg-[#0a0a0a] border border-neutral-700 rounded-lg p-4 text-white outline-none"
-          />
-          <input
-            type="number"
-            placeholder="Cost (ค่าใช้จ่าย)"
-            value={newItem.cost || ''}
-            onChange={(e) => setNewItem({ ...newItem, cost: Number(e.target.value) })}
-            className="bg-[#0a0a0a] border border-neutral-700 rounded-lg p-4 text-white outline-none"
-          />
-          <input
-            type="number"
-            placeholder="ผลลัพธ์ตัวเลข"
-            value={newItem.metricValue || ''}
-            onChange={(e) => setNewItem({ ...newItem, metricValue: Number(e.target.value) })}
-            className="bg-[#0a0a0a] border border-neutral-700 rounded-lg p-4 text-white outline-none"
-          />
-          
-          <select
-            value={newItem.metricType}
-            onChange={(e) => setNewItem({ ...newItem, metricType: e.target.value })}
-            className="bg-[#0a0a0a] border border-neutral-700 rounded-lg p-4 text-white outline-none cursor-pointer"
-          >
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+          <input type="text" placeholder="ชื่อแคมเปญ" value={newItem.name} onChange={(e) => setNewItem({ ...newItem, name: e.target.value })} className="bg-[#0a0a0a] border border-neutral-700 rounded-lg p-3 text-white outline-none w-full" />
+          <input type="number" placeholder="Cost (ค่าใช้จ่าย)" value={newItem.cost || ''} onChange={(e) => setNewItem({ ...newItem, cost: Number(e.target.value) })} className="bg-[#0a0a0a] border border-neutral-700 rounded-lg p-3 text-white outline-none w-full" />
+          <input type="number" placeholder="ผลลัพธ์ตัวเลข" value={newItem.metricValue || ''} onChange={(e) => setNewItem({ ...newItem, metricValue: Number(e.target.value) })} className="bg-[#0a0a0a] border border-neutral-700 rounded-lg p-3 text-white outline-none w-full" />
+          <select value={newItem.metricType} onChange={(e) => setNewItem({ ...newItem, metricType: e.target.value })} className="bg-[#0a0a0a] border border-neutral-700 rounded-lg p-3 text-white outline-none cursor-pointer w-full">
             <option value="Reach" className="bg-[#111] text-white">Reach</option>
             <option value="Follows" className="bg-[#111] text-white">Follows</option>
             <option value="Likes" className="bg-[#111] text-white">Likes</option>
@@ -392,79 +338,41 @@ function AdsRankingSection({ title, list, setList, newItem, setNewItem }) {
           </select>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <label className="flex items-center justify-center w-full bg-[#0a0a0a] border-2 border-dashed border-neutral-700 rounded-lg p-4 cursor-pointer hover:bg-neutral-800 hover:border-blue-500 transition duration-200 group">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <label className="flex items-center justify-center w-full bg-[#0a0a0a] border-2 border-dashed border-neutral-700 rounded-lg p-3 cursor-pointer hover:bg-neutral-800 hover:border-blue-500 transition duration-200 group">
             <span className="text-xl mr-2">📸</span>
-            <span className={`text-sm font-medium transition-colors truncate ${newItem.image ? 'text-blue-400' : 'text-neutral-400 group-hover:text-blue-400'}`}>
-              {newItem.image ? 'มีรูปภาพแล้ว (คลิกเปลี่ยน)' : 'อัปโหลดรูปภาพแคมเปญ'}
+            <span className={`text-xs md:text-sm font-medium transition-colors truncate ${newItem.image ? 'text-blue-400' : 'text-neutral-400 group-hover:text-blue-400'}`}>
+              {newItem.image ? 'มีรูปภาพแล้ว' : 'อัปโหลดรูปภาพแคมเปญ'}
             </span>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleFileChange}
-              className="hidden"
-            />
+            <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
           </label>
-
-          <button
-            onClick={handleAdd}
-            className="bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg p-4 transition"
-          >
-            + เพิ่มแคมเปญ
-          </button>
+          <button onClick={handleAdd} className="bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg p-3 transition w-full">+ เพิ่มแคมเปญ</button>
         </div>
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-neutral-800">
-        <table className="w-full text-left text-sm text-neutral-300">
+        <table className="w-full text-left text-sm text-neutral-300 min-w-[600px]">
           <thead className="bg-neutral-950 text-neutral-400 uppercase text-xs">
             <tr>
-              <th className="p-4 text-center w-24">อันดับ</th>
-              <th className="p-4 w-24">รูปภาพ</th>
+              <th className="p-4 text-center w-16 md:w-24">อันดับ</th>
+              <th className="p-4 w-16 md:w-24">รูปภาพ</th>
               <th className="p-4">แคมเปญ</th>
               <th className="p-4">Cost (฿)</th>
               <th className="p-4">Result</th>
-              <th className="p-4 text-center w-24">จัดการ</th>
+              <th className="p-4 text-center w-20 md:w-24">จัดการ</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-neutral-800">
-            {list.length === 0 && (
-              <tr>
-                <td colSpan="6" className="text-center p-8 text-neutral-500">
-                  ยังไม่มีข้อมูลในตาราง
-                </td>
-              </tr>
-            )}
+            {list.length === 0 && (<tr><td colSpan="6" className="text-center p-8 text-neutral-500">ยังไม่มีข้อมูลในตาราง</td></tr>)}
             {list.map((item, index) => (
-              <tr
-                key={index}
-                draggable
-                onDragStart={() => (dragItem.current = index)}
-                onDragEnter={() => (dragOverItem.current = index)}
-                onDragEnd={handleSort}
-                onDragOver={(e) => e.preventDefault()}
-                className="hover:bg-neutral-800 transition cursor-move bg-neutral-900 group"
-              >
-                <td className="p-4 text-center font-bold text-white">
-                  <span className="text-neutral-600 mr-2">☰</span> #{index + 1}
-                </td>
-                <td className="p-4">
-                  {item.image ? (
-                    <img src={item.image} className="h-14 w-14 object-cover rounded shadow-md" alt="ad preview" />
-                  ) : (
-                    <div className="h-14 w-14 bg-neutral-800 rounded flex items-center justify-center text-[10px] text-neutral-500">No Img</div>
-                  )}
-                </td>
+              <tr key={index} draggable onDragStart={() => (dragItem.current = index)} onDragEnter={() => (dragOverItem.current = index)} onDragEnd={handleSort} onDragOver={(e) => e.preventDefault()} className="hover:bg-neutral-800 transition cursor-move bg-neutral-900 group">
+                <td className="p-4 text-center font-bold text-white"><span className="text-neutral-600 mr-2">☰</span> #{index + 1}</td>
+                <td className="p-4">{item.image ? <img src={item.image} className="h-10 w-10 md:h-14 md:w-14 object-cover rounded shadow-md" alt="ad preview" /> : <div className="h-10 w-10 md:h-14 md:w-14 bg-neutral-800 rounded flex items-center justify-center text-[8px] md:text-[10px] text-neutral-500">No Img</div>}</td>
                 <td className="p-4 font-medium text-white">{item.name}</td>
-                <td className="p-4 text-orange-400 text-lg font-mono">{item.cost?.toLocaleString() || 0}</td>
-                <td className="p-4 text-blue-400 text-lg font-mono">
-                  {item.metricValue?.toLocaleString() || 0}
-                  <span className="text-sm text-neutral-500 ml-2">{item.metricType}</span>
-                </td>
+                <td className="p-4 text-orange-400 text-md md:text-lg font-mono">{item.cost?.toLocaleString() || 0}</td>
+                <td className="p-4 text-blue-400 text-md md:text-lg font-mono">{item.metricValue?.toLocaleString() || 0} <span className="text-xs md:text-sm text-neutral-500 ml-1 md:ml-2">{item.metricType}</span></td>
                 <td className="p-4 text-center">
-                  <button onClick={() => handleRemove(index)} className="text-red-500 hover:text-white hover:bg-red-600 border border-red-500/50 px-3 py-1 rounded transition font-bold">
-                    ลบ
-                  </button>
+                  <button onClick={() => handleRemove(index)} className="text-red-500 hover:text-white hover:bg-red-600 border border-red-500/50 px-3 py-1 rounded transition font-bold text-xs md:text-sm">ลบ</button>
                 </td>
               </tr>
             ))}

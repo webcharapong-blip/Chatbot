@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import Login from './Login';
-import DashboardView from './DashboardView';
 import Editor from './Editor';
+import Dashboard from './Dashboard'; // 👈 นำเข้าไฟล์ Dashboard.jsx ที่เราเพิ่งแก้
 
 function App() {
   const [token, setToken] = useState(localStorage.getItem('token'));
@@ -21,9 +21,11 @@ function App() {
       ) : role === 'editor' ? (
         <Editor logout={handleLogout} />
       ) : (
-        <DashboardView logout={handleLogout} />
+        // 👈 ตรงนี้สำคัญมาก! ให้คนดูไปที่หน้า Dashboard (Looker) ไม่ใช่ DashboardView
+        <Dashboard logout={handleLogout} />
       )}
     </div>
   );
 }
+
 export default App;
