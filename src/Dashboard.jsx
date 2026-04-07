@@ -133,7 +133,7 @@ export default function Dashboard({ logout }) {
         typebot="pattayapal"
         apiHost="https://typebot.io"
         theme={{
-          button: { backgroundColor: "#f97316", size: "medium" },
+          button: { backgroundColor: "#0040a7", size: "medium" },
           chatWindow: { backgroundColor: "#ffffff" }
         }}
       />
