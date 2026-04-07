@@ -85,8 +85,8 @@ export default function DashboardView({ logout, onBack }) {
 
       <div className="max-w-7xl mx-auto relative z-10">
         
-        {/* KPI Summary */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-8 mb-16 md:mb-20 max-w-4xl mx-auto">
+        
+        {/* <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-8 mb-16 md:mb-20 max-w-4xl mx-auto">
           <div className="bg-white/90 backdrop-blur-sm p-6 md:p-8 rounded-3xl shadow-lg text-center border-b-8 border-emerald-500 transform transition hover:-translate-y-1">
             <p className="text-gray-500 font-bold mb-1 md:mb-2 text-sm md:text-lg uppercase tracking-wider">Total Result</p>
             <p className="text-4xl md:text-5xl font-black text-[#2C3B2E]">{data?.kpis?.totalResult?.toLocaleString() || 0}</p>
@@ -95,7 +95,7 @@ export default function DashboardView({ logout, onBack }) {
             <p className="text-gray-500 font-bold mb-1 md:mb-2 text-sm md:text-lg uppercase tracking-wider">Advertising</p>
             <p className="text-4xl md:text-5xl font-black text-[#2C3B2E]">{data?.kpis?.totalAdvertising?.toLocaleString() || 0}</p>
           </div>
-        </div>
+        </div> */}
 
         {/* Section 1: TOP Organic Posts */}
         <section className="mb-16 md:mb-24 relative">
