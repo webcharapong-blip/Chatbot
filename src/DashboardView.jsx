@@ -121,31 +121,7 @@ export default function DashboardView({ logout, onBack }) {
           </div>
         </section>
 
-        {/* Section 2: Top Like Of Month */}
-        <section className="mb-16 md:mb-24 relative">
-          <div className="flex justify-center md:justify-start mb-8 md:mb-10">
-            <h2 className="bg-[#4A4A4A] text-white text-xl md:text-3xl font-bold py-2 md:py-3 px-6 md:px-8 rounded-xl shadow-md text-center">
-              Top Like Of Month
-            </h2>
-          </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-12 md:gap-x-12 md:gap-y-16">
-            {sortedLike.slice(0, 3).map((item, idx) => (
-              <RankingCard key={idx} index={idx} item={item} label="Likes" month={displayMonth} />
-            ))}
-            {sortedLike.length === 0 && (
-              <p className="text-neutral-600 font-medium italic col-span-full text-center py-10">ยังไม่มีข้อมูลยอดไลก์ในเดือนนี้</p>
-            )}
-          </div>
-
-          <div className="flex justify-center mt-10 md:mt-14">
-            <span className="bg-[#4A4A4A] text-white text-lg md:text-2xl font-bold py-2 md:py-3 px-6 md:px-10 rounded-xl shadow-md tracking-wide">
-              Update {displayMonth}
-            </span>
-          </div>
-        </section>
-
-        {/* Section 3: Total Result , Advertising (Ads) */}
+        {/* Section 2: Total Result , Advertising (Ads) */}
         <section className="mb-10 relative">
           <div className="flex justify-center md:justify-start mb-8 md:mb-10">
             <h2 className="bg-[#4A4A4A] text-white text-xl md:text-3xl font-bold py-2 md:py-3 px-6 md:px-8 rounded-xl shadow-md text-center">
@@ -159,6 +135,30 @@ export default function DashboardView({ logout, onBack }) {
             ))}
             {sortedAds.length === 0 && (
               <p className="text-neutral-600 font-medium italic col-span-full text-center py-10">ยังไม่มีข้อมูลแคมเปญโฆษณาในเดือนนี้</p>
+            )}
+          </div>
+
+          <div className="flex justify-center mt-10 md:mt-14">
+            <span className="bg-[#4A4A4A] text-white text-lg md:text-2xl font-bold py-2 md:py-3 px-6 md:px-10 rounded-xl shadow-md tracking-wide">
+              Update {displayMonth}
+            </span>
+          </div>
+        </section>
+
+        {/* Section 3: Top Like Of Month */}
+        <section className="mb-16 md:mb-24 relative">
+          <div className="flex justify-center md:justify-start mb-8 md:mb-10">
+            <h2 className="bg-[#4A4A4A] text-white text-xl md:text-3xl font-bold py-2 md:py-3 px-6 md:px-8 rounded-xl shadow-md text-center">
+              Top Like Of Month
+            </h2>
+          </div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-12 md:gap-x-12 md:gap-y-16">
+            {sortedLike.slice(0, 3).map((item, idx) => (
+              <RankingCard key={idx} index={idx} item={item} label="Likes" month={displayMonth} />
+            ))}
+            {sortedLike.length === 0 && (
+              <p className="text-neutral-600 font-medium italic col-span-full text-center py-10">ยังไม่มีข้อมูลยอดไลก์ในเดือนนี้</p>
             )}
           </div>
 
