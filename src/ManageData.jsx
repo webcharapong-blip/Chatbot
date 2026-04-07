@@ -5,7 +5,7 @@ export default function ManageData({ onEdit, onBack }) {
   const [savedMonths, setSavedMonths] = useState([]);
   const API_URL = 'https://chatbot-5x95.onrender.com/api';
 
-  // ดึงรายชื่อเดือนทั้งหมดเมื่อเปิดหน้านี้
+  // ดึงรายชื่อเดือนทั้งหมด
   const fetchMonths = () => {
     axios
       .get(`${API_URL}/dashboards/all`)
@@ -19,26 +19,38 @@ export default function ManageData({ onEdit, onBack }) {
     fetchMonths();
   }, []);
 
-  // ฟังก์ชันลบเดือน
-  const handleDelete = async (month) => {
-    const isConfirm = window.confirm(`⚠️ คุณแน่ใจหรือไม่ที่จะลบข้อมูลของเดือน ${month} ทั้งหมด?\n(ไม่สามารถกู้คืนได้)`);
+  // ฟังก์ชันลบข้อมูล (ส่งทั้ง ID และ Month)
+  const handleDelete = async (id, month) => {
+    const targetDisplay = month || "ข้อมูลไม่สมบูรณ์ (ID: " + id + ")";
+    const isConfirm = window.confirm(`⚠️ คุณแน่ใจหรือไม่ที่จะลบข้อมูลของ ${targetDisplay} ?\n(การกระทำนี้ไม่สามารถกู้คืนได้)`);
+    
     if (!isConfirm) return;
 
     try {
-      await axios.delete(`${API_URL}/dashboard?month=${month}`);
-      alert(`🗑️ ลบข้อมูลเดือน ${month} สำเร็จ!`);
-      fetchMonths(); // ดึงข้อมูลใหม่เพื่อรีเฟรชตาราง
+      // ✨ ส่ง ID ไปลบใน Query String
+      await axios.delete(`${API_URL}/dashboard?id=${id}`);
+      alert(`🗑️ ลบข้อมูลเรียบร้อยแล้ว!`);
+      fetchMonths(); // รีเฟรชรายการ
     } catch (error) {
-      alert('เกิดข้อผิดพลาดในการลบข้อมูล');
+      alert('เกิดข้อผิดพลาดในการลบข้อมูล: ' + (error.response?.data?.error || error.message));
     }
   };
 
-  // ตัวช่วยแปลง Format เดือน
+  // ✨ ตัวช่วยแปลงเดือน (มีตัวดักกันพัง)
   const formatMonth = (monthString) => {
-    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-    const year = monthString.split('-')[0];
-    const monthIdx = parseInt(monthString.split('-')[1]) - 1;
-    return `${monthNames[monthIdx]} ${year}`;
+    if (!monthString || typeof monthString !== 'string' || !monthString.includes('-')) {
+      return "ข้อมูลไม่สมบูรณ์ (No Date)";
+    }
+    
+    try {
+      const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+      const parts = monthString.split('-');
+      const year = parts[0];
+      const monthIdx = parseInt(parts[1]) - 1;
+      return `${monthNames[monthIdx]} ${year}`;
+    } catch (error) {
+      return "Invalid Format";
+    }
   };
 
   return (
@@ -59,44 +71,54 @@ export default function ManageData({ onEdit, onBack }) {
         </div>
 
         <section className="bg-neutral-900 p-8 rounded-2xl border border-neutral-800 shadow-xl">
-          <h2 className="text-xl font-bold mb-6 text-neutral-300">ประวัติการบันทึกข้อมูล</h2>
+          <h2 className="text-xl font-bold mb-6 text-neutral-300">รายการเดือนที่บันทึกไว้</h2>
           
           <div className="overflow-x-auto rounded-lg border border-neutral-800">
             <table className="w-full text-left text-sm text-neutral-300">
-              <thead className="bg-neutral-950 text-neutral-400 uppercase text-xs">
+              <thead className="bg-neutral-950 text-neutral-400 uppercase text-xs tracking-wider">
                 <tr>
-                  <th className="p-4 w-16 text-center">ลำดับ</th>
+                  <th className="p-4 w-16 text-center">#</th>
                   <th className="p-4">เดือน / ปี (Month)</th>
-                  <th className="p-4 w-48 text-center">จัดการ</th>
+                  <th className="p-4 w-48 text-center">การจัดการ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-800">
                 {savedMonths.length === 0 && (
                   <tr>
-                    <td colSpan="3" className="text-center p-8 text-neutral-500">
-                      ยังไม่มีข้อมูลที่บันทึกไว้ในระบบ
-                    </td>
+                    <td colSpan="3" className="text-center p-8 text-neutral-500">ยังไม่มีข้อมูลในระบบ</td>
                   </tr>
                 )}
                 {savedMonths.map((item, index) => (
-                  <tr key={item._id} className="hover:bg-neutral-800 transition bg-neutral-900">
+                  <tr key={item._id} className="hover:bg-neutral-800/50 transition bg-neutral-900">
                     <td className="p-4 text-center font-bold text-neutral-500">{index + 1}</td>
-                    <td className="p-4 font-bold text-white text-lg">
-                      {formatMonth(item.month)} <span className="text-sm font-normal text-neutral-500 ml-2">({item.month})</span>
+                    <td className="p-4">
+                      <div className="flex flex-col">
+                        <span className="font-bold text-white text-lg">
+                          {formatMonth(item.month)}
+                        </span>
+                        <span className="text-xs text-neutral-500">
+                          {item.month || "ID: " + item._id}
+                        </span>
+                      </div>
                     </td>
-                    <td className="p-4 text-center flex justify-center gap-2">
-                      <button
-                        onClick={() => onEdit(item.month)}
-                        className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded font-bold transition shadow-md"
-                      >
-                        ✏️ แก้ไข
-                      </button>
-                      <button
-                        onClick={() => handleDelete(item.month)}
-                        className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded font-bold transition shadow-md"
-                      >
-                        🗑️ ลบ
-                      </button>
+                    <td className="p-4 text-center">
+                      <div className="flex justify-center gap-2">
+                        <button
+                          onClick={() => {
+                            if(!item.month) return alert("ข้อมูลขยะไม่สามารถแก้ไขได้ กรุณาลบทิ้ง");
+                            onEdit(item.month);
+                          }}
+                          className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded font-bold transition shadow-md"
+                        >
+                          ✏️ แก้ไข
+                        </button>
+                        <button
+                          onClick={() => handleDelete(item._id, item.month)}
+                          className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded font-bold transition shadow-md"
+                        >
+                          🗑️ ลบ
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

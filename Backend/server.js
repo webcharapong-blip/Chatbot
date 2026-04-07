@@ -15,6 +15,7 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
+// ─── Middleware ───
 app.use(cors({
     origin: ['https://darkgreen-gorilla-736792.hostingersite.com', 'https://terminal21-planner.com', 'http://localhost:5173', 'http://localhost:3000'],
     credentials: true
@@ -22,8 +23,10 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' })); 
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
+// ─── MongoDB Connection ───
 mongoose.connect(process.env.MONGO_URI).then(() => console.log('MongoDB Connected! ✅'));
 
+// ─── Schemas ───
 const UserSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true },
@@ -43,6 +46,7 @@ const DashboardSchema = new mongoose.Schema({
 });
 const Dashboard = mongoose.models.Dashboard || mongoose.model('Dashboard', DashboardSchema);
 
+// ─── Helper: Cloudinary Upload ───
 const uploadToCloudinary = async (base64Img) => {
   if (!base64Img || base64Img.startsWith('http')) return base64Img;
   try {
@@ -54,6 +58,7 @@ const uploadToCloudinary = async (base64Img) => {
   }
 };
 
+// ─── Auth Routes ───
 app.post('/api/auth/register', async (req, res) => {
   try {
     const { username, password, role } = req.body;
@@ -77,6 +82,8 @@ app.post('/api/auth/login', async (req, res) => {
   } catch (error) { res.status(500).json({ message: 'Server Error' }); }
 });
 
+// ─── Dashboard Data Routes ───
+
 // ดึงข้อมูลรายเดือน
 app.get('/api/dashboard', async (req, res) => {
   try {
@@ -85,15 +92,15 @@ app.get('/api/dashboard', async (req, res) => {
   } catch (error) { res.status(500).json({ error: 'Server Error' }); }
 });
 
-// ✨ 🆕 ดึงรายชื่อเดือน "ทั้งหมด" ที่เคยบันทึกไว้ ✨
+// ดึงรายชื่อเดือน "ทั้งหมด" เพื่อแสดงในหน้า ManageData
 app.get('/api/dashboards/all', async (req, res) => {
   try {
-    const data = await Dashboard.find({}, 'month').sort({ month: -1 }); // ดึงมาแค่ฟิลด์ month เรียงจากใหม่ไปเก่า
+    const data = await Dashboard.find({}, 'month').sort({ month: -1 });
     res.json(data);
   } catch (error) { res.status(500).json({ error: 'Server Error' }); }
 });
 
-// บันทึกข้อมูล
+// บันทึก/อัปเดตข้อมูล
 app.post('/api/dashboard', async (req, res) => {
   try {
     const { month, kpis, topOrganic, topLike, topAds } = req.body;
@@ -104,22 +111,34 @@ app.post('/api/dashboard', async (req, res) => {
     const finalAds = await uploadImages(topAds || []);
 
     let data = await Dashboard.findOneAndUpdate(
-      { month }, { kpis, topOrganic: finalOrganic, topLike: finalLike, topAds: finalAds }, { new: true, upsert: true }
+      { month }, 
+      { kpis, topOrganic: finalOrganic, topLike: finalLike, topAds: finalAds }, 
+      { new: true, upsert: true }
     );
-    res.json({ message: 'บันทึกข้อมูลและอัปโหลดรูปสำเร็จ!', data });
+    res.json({ message: 'บันทึกข้อมูลสำเร็จ!', data });
   } catch (error) { res.status(500).json({ error: 'Server Error' }); }
 });
 
-// ลบข้อมูลรายเดือน
+// ✨ 🆕 แก้ไข: API ลบข้อมูลประจำเดือน (รองรับ ID สำหรับกำจัดข้อมูลขยะ)
 app.delete('/api/dashboard', async (req, res) => {
   try {
-    const month = req.query.month;
-    if (!month) return res.status(400).json({ error: 'กรุณาระบุเดือน' });
-    await Dashboard.findOneAndDelete({ month: month });
-    res.json({ message: 'ลบข้อมูลสำเร็จ' });
+    const { id, month } = req.query;
+    
+    if (id) {
+      // ลบด้วยรหัส ID (แม่นยำที่สุดสำหรับข้อมูลขยะ)
+      await Dashboard.findByIdAndDelete(id);
+      return res.json({ message: 'ลบข้อมูลด้วย ID สำเร็จ' });
+    } else if (month) {
+      // ลบด้วยชื่อเดือน (วิธีปกติ)
+      await Dashboard.findOneAndDelete({ month: month });
+      return res.json({ message: 'ลบข้อมูลด้วยเดือนสำเร็จ' });
+    } else {
+      return res.status(400).json({ error: 'กรุณาระบุ ID หรือเดือนที่ต้องการลบ' });
+    }
   } catch (error) {
-    res.status(500).json({ error: 'Server Error' });
+    console.error('Delete Error:', error);
+    res.status(500).json({ error: 'เกิดข้อผิดพลาดในการลบข้อมูลที่เซิร์ฟเวอร์' });
   }
 });
 
-app.listen(process.env.PORT || 5000, () => console.log(`Server running 🚀`));
+app.listen(process.env.PORT || 5000, () => console.log(`Server running on port 5000 🚀`));
