@@ -3,18 +3,21 @@ import axios from 'axios';
 
 export default function DashboardView({ logout, onBack }) {
   const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [platform, setPlatform] = useState('Facebook'); // เพิ่ม state สำหรับเลือกแพตฟอร์ม
   const [data, setData] = useState(null);
 
   useEffect(() => {
+    // ใช้ Composite Key (month_platform) เพื่อแยกข้อมูลแต่ละแพตฟอร์มออกจากกันในฝั่ง Database
+    const compositeMonth = `${month}_${platform}`;
     axios
-      .get(`https://chatbot-5x95.onrender.com/api/dashboard?month=${month}`)
+      .get(`https://chatbot-5x95.onrender.com/api/dashboard?month=${compositeMonth}`)
       .then((res) => {
         setData(res.data);
       })
       .catch((err) => {
         console.error('Error fetching dashboard data:', err);
       });
-  }, [month]);
+  }, [month, platform]);
 
   const monthNames = [
     "January", "February", "March", "April", "May", "June",
@@ -36,6 +39,77 @@ export default function DashboardView({ logout, onBack }) {
     ? [...data.topAds].sort((a, b) => b.metricValue - a.metricValue) 
     : [];
 
+  // ฟังก์ชัน Export ข้อมูลเป็นไฟล์ Excel พร้อมรูปภาพ (ใช้เทคนิค HTML Table)
+  const handleExportExcel = () => {
+    if (!data) return alert("ไม่มีข้อมูลให้ Export");
+
+    const createTableRows = (title, items, typeLabel) => {
+      let rowsHtml = `<tr><td colspan="4" style="background-color: #4A4A4A; color: white; font-weight: bold; text-align: center; height: 30px;">${title}</td></tr>`;
+      rowsHtml += `<tr style="background-color: #f2f2f2; font-weight: bold;">
+        <td style="width: 100px;">Rank</td>
+        <td style="width: 250px;">Content Name</td>
+        <td style="width: 120px;">${typeLabel}</td>
+        <td style="width: 200px;">Image Preview</td>
+      </tr>`;
+
+      items.forEach((item, idx) => {
+        const imageHtml = item.image 
+          ? `<img src="${item.image}" width="150" height="auto" />` 
+          : "No Image";
+        
+        rowsHtml += `<tr>
+          <td style="text-align: center;">Top ${idx + 1}</td>
+          <td>${item.name}</td>
+          <td style="text-align: right;">${(item.score || item.metricValue || 0).toLocaleString()}</td>
+          <td style="text-align: center; vertical-align: middle;">${imageHtml}</td>
+        </tr>`;
+      });
+      return rowsHtml;
+    };
+
+    let html = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+      <head>
+        <meta charset="utf-8">
+        <!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Report</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
+        <style>
+          table { border-collapse: collapse; }
+          td { border: 1px solid #ccc; padding: 5px; font-family: sans-serif; }
+        </style>
+      </head>
+      <body>
+        <h2>Data Analytics Report: ${platform} (${displayMonth})</h2>
+        <table>
+          ${createTableRows("TOP Organic Posts", sortedOrganic, "Views")}
+          ${platform === 'Facebook' ? createTableRows("Top Like Of Month", sortedLike, "Likes") : ""}
+          ${platform === 'Facebook' ? `
+            <tr><td colspan="4" style="background-color: #4A4A4A; color: white; font-weight: bold; text-align: center; height: 30px;">Total Result , Advertising</td></tr>
+            <tr style="background-color: #f2f2f2; font-weight: bold;">
+              <td>Rank</td><td>Campaign</td><td>Result (Cost)</td><td>Image Preview</td>
+            </tr>
+            ${sortedAds.map((item, idx) => `
+              <tr>
+                <td style="text-align: center;">Top ${idx+1}</td>
+                <td>${item.name}</td>
+                <td>${item.metricValue?.toLocaleString()} ${item.metricType} (฿${item.cost?.toLocaleString()})</td>
+                <td style="text-align: center;">${item.image ? `<img src="${item.image}" width="150" height="auto" />` : "No Image"}</td>
+              </tr>
+            `).join('')}
+          ` : ""}
+        </table>
+      </body>
+      </html>
+    `;
+
+    const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Report_${platform}_${month}.xls`);
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="min-h-screen bg-[#C8D5B9] text-neutral-900 font-sans p-4 md:p-8 pb-24 relative overflow-hidden">
       
@@ -50,7 +124,20 @@ export default function DashboardView({ logout, onBack }) {
         <div className="flex flex-wrap justify-center gap-2 md:gap-4 items-center">
           
           <div className="bg-white/80 backdrop-blur-md px-4 md:px-5 py-2 md:py-3 rounded-full shadow-md border border-white/40 flex items-center">
-            <label className="font-bold mr-2 md:mr-3 text-neutral-700 text-sm md:text-base">Select Month:</label>
+            <label className="font-bold mr-2 md:mr-3 text-neutral-700 text-sm md:text-base whitespace-nowrap">Platform:</label>
+            <select
+              value={platform}
+              onChange={(e) => setPlatform(e.target.value)}
+              className="bg-transparent outline-none font-medium cursor-pointer text-neutral-800 text-sm md:text-base mr-2"
+            >
+              <option value="Facebook">Facebook</option>
+              <option value="Ig">Ig (Instagram)</option>
+              <option value="Tiktok">Tiktok</option>
+            </select>
+          </div>
+
+          <div className="bg-white/80 backdrop-blur-md px-4 md:px-5 py-2 md:py-3 rounded-full shadow-md border border-white/40 flex items-center">
+            <label className="font-bold mr-2 md:mr-3 text-neutral-700 text-sm md:text-base whitespace-nowrap">Select Month:</label>
             <input
               type="month"
               value={month}
@@ -58,6 +145,14 @@ export default function DashboardView({ logout, onBack }) {
               className="bg-transparent outline-none font-medium cursor-pointer text-neutral-800 text-sm md:text-base"
             />
           </div>
+
+          {/* 📥 ปุ่ม Export Excel พร้อมรูปภาพ */}
+          <button
+            onClick={handleExportExcel}
+            className="px-4 py-2 md:px-6 md:py-3 bg-emerald-700 hover:bg-emerald-600 text-white rounded-full font-bold shadow-md transition transform hover:-translate-y-0.5 flex items-center gap-2 text-sm md:text-base"
+          >
+            <span>📥 Export Excel (With Image)</span>
+          </button>
 
           {/* 👁️ จะแสดงปุ่ม 'กลับไปหน้า Editor' ก็ต่อเมื่อเข้าจากโหมด Editor (มีส่ง onBack มา) */}
           {onBack && (
@@ -97,11 +192,11 @@ export default function DashboardView({ logout, onBack }) {
           </div>
         </div> */}
 
-        {/* Section 1: TOP Organic Posts */}
+        {/* Section 1: TOP Organic Posts (แสดงทุกแพตฟอร์ม) */}
         <section className="mb-16 md:mb-24 relative">
           <div className="flex justify-center md:justify-start mb-8 md:mb-10">
             <h2 className="bg-[#4A4A4A] text-white text-xl md:text-3xl font-bold py-2 md:py-3 px-6 md:px-8 rounded-xl shadow-md text-center">
-              TOP Organic Posts
+              TOP Organic Posts {platform !== 'Facebook' && `(${platform})`}
             </h2>
           </div>
           
@@ -121,53 +216,58 @@ export default function DashboardView({ logout, onBack }) {
           </div>
         </section>
 
-        {/* Section 2: Total Result , Advertising (Ads) */}
-        <section className="mb-10 relative">
-          <div className="flex justify-center md:justify-start mb-8 md:mb-10">
-            <h2 className="bg-[#4A4A4A] text-white text-xl md:text-3xl font-bold py-2 md:py-3 px-6 md:px-8 rounded-xl shadow-md text-center">
-              Total Result , Advertising
-            </h2>
-          </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-12 md:gap-x-12 md:gap-y-16">
-            {sortedAds.slice(0, 3).map((item, idx) => (
-              <AdsCard key={idx} index={idx} item={item} month={displayMonth} />
-            ))}
-            {sortedAds.length === 0 && (
-              <p className="text-neutral-600 font-medium italic col-span-full text-center py-10">ยังไม่มีข้อมูลแคมเปญโฆษณาในเดือนนี้</p>
-            )}
-          </div>
+        {/* Section 2 & 3: แสดงเฉพาะ Facebook เท่านั้น ตามความต้องการของ USER */}
+        {platform === 'Facebook' && (
+          <>
+            {/* Section 2: Total Result , Advertising (Ads) */}
+            <section className="mb-10 relative">
+              <div className="flex justify-center md:justify-start mb-8 md:mb-10">
+                <h2 className="bg-[#4A4A4A] text-white text-xl md:text-3xl font-bold py-2 md:py-3 px-6 md:px-8 rounded-xl shadow-md text-center">
+                  Total Result , Advertising
+                </h2>
+              </div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-12 md:gap-x-12 md:gap-y-16">
+                {sortedAds.slice(0, 3).map((item, idx) => (
+                  <AdsCard key={idx} index={idx} item={item} month={displayMonth} />
+                ))}
+                {sortedAds.length === 0 && (
+                  <p className="text-neutral-600 font-medium italic col-span-full text-center py-10">ยังไม่มีข้อมูลแคมเปญโฆษณาในเดือนนี้</p>
+                )}
+              </div>
 
-          <div className="flex justify-center mt-10 md:mt-14">
-            <span className="bg-[#4A4A4A] text-white text-lg md:text-2xl font-bold py-2 md:py-3 px-6 md:px-10 rounded-xl shadow-md tracking-wide">
-              Update {displayMonth}
-            </span>
-          </div>
-        </section>
+              <div className="flex justify-center mt-10 md:mt-14">
+                <span className="bg-[#4A4A4A] text-white text-lg md:text-2xl font-bold py-2 md:py-3 px-6 md:px-10 rounded-xl shadow-md tracking-wide">
+                  Update {displayMonth}
+                </span>
+              </div>
+            </section>
 
-        {/* Section 3: Top Like Of Month */}
-        <section className="mb-16 md:mb-24 relative">
-          <div className="flex justify-center md:justify-start mb-8 md:mb-10">
-            <h2 className="bg-[#4A4A4A] text-white text-xl md:text-3xl font-bold py-2 md:py-3 px-6 md:px-8 rounded-xl shadow-md text-center">
-              Top Like Of Month
-            </h2>
-          </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-12 md:gap-x-12 md:gap-y-16">
-            {sortedLike.slice(0, 3).map((item, idx) => (
-              <RankingCard key={idx} index={idx} item={item} label="Likes" month={displayMonth} />
-            ))}
-            {sortedLike.length === 0 && (
-              <p className="text-neutral-600 font-medium italic col-span-full text-center py-10">ยังไม่มีข้อมูลยอดไลก์ในเดือนนี้</p>
-            )}
-          </div>
+            {/* Section 3: Top Like Of Month */}
+            <section className="mb-16 md:mb-24 relative">
+              <div className="flex justify-center md:justify-start mb-8 md:mb-10">
+                <h2 className="bg-[#4A4A4A] text-white text-xl md:text-3xl font-bold py-2 md:py-3 px-6 md:px-8 rounded-xl shadow-md text-center">
+                  Top Like Of Month
+                </h2>
+              </div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-12 md:gap-x-12 md:gap-y-16">
+                {sortedLike.slice(0, 3).map((item, idx) => (
+                  <RankingCard key={idx} index={idx} item={item} label="Likes" month={displayMonth} />
+                ))}
+                {sortedLike.length === 0 && (
+                  <p className="text-neutral-600 font-medium italic col-span-full text-center py-10">ยังไม่มีข้อมูลยอดไลก์ในเดือนนี้</p>
+                )}
+              </div>
 
-          <div className="flex justify-center mt-10 md:mt-14">
-            <span className="bg-[#4A4A4A] text-white text-lg md:text-2xl font-bold py-2 md:py-3 px-6 md:px-10 rounded-xl shadow-md tracking-wide">
-              Update {displayMonth}
-            </span>
-          </div>
-        </section>
+              <div className="flex justify-center mt-10 md:mt-14">
+                <span className="bg-[#4A4A4A] text-white text-lg md:text-2xl font-bold py-2 md:py-3 px-6 md:px-10 rounded-xl shadow-md tracking-wide">
+                  Update {displayMonth}
+                </span>
+              </div>
+            </section>
+          </>
+        )}
 
       </div>
     </div>

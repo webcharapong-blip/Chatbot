@@ -14,6 +14,7 @@ const getBase64 = (file) => {
 
 export default function Editor({ logout }) {
   const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [platform, setPlatform] = useState('Facebook'); // เพิ่ม state สำหรับเลือกแพตฟอร์ม
   
   const [topOrganic, setTopOrganic] = useState([]);
   const [topLike, setTopLike] = useState([]);
@@ -28,12 +29,17 @@ export default function Editor({ logout }) {
   const API_URL = 'https://chatbot-5x95.onrender.com/api/dashboard';
 
   // ฟังก์ชันนี้ถูกเรียกเมื่อกดปุ่ม "แก้ไข" จากหน้า ManageData
-  const handleEditData = async (selectedMonth) => {
+  const handleEditData = async (compositeMonth) => {
     try {
-      const res = await axios.get(`${API_URL}?month=${selectedMonth}`);
+      // ดึงข้อมูลตาม Composite Key (Month_Platform)
+      const res = await axios.get(`${API_URL}?month=${compositeMonth}`);
       const data = res.data;
       
-      setMonth(selectedMonth);
+      // แยกข้อมูล Month และ Platform ออกจาก Composite Key
+      const [baseMonth, plat] = compositeMonth.split('_');
+      setMonth(baseMonth || compositeMonth); //Fallback ถ้าไม่มี _
+      if (plat) setPlatform(plat);
+      
       setTopOrganic(data.topOrganic || []);
       setTopLike(data.topLike || []);
       setTopAds(data.topAds || []);
@@ -47,15 +53,19 @@ export default function Editor({ logout }) {
 
   // ฟังก์ชันบันทึกข้อมูล พร้อมเคลียร์หน้าจอเริ่มใหม่
   const handleSaveData = async () => {
+    // รวมร่าง Month กับ Platform เป็น Key เดียวกันเพื่อให้ Backend เก็บแยกกันได้
+    const compositeMonth = `${month}_${platform}`;
+    
     try {
       await axios.post(API_URL, { 
-        month: month, 
+        month: compositeMonth, 
+        platform: platform, 
         topOrganic: topOrganic, 
         topLike: topLike, 
         topAds: topAds 
       });
       
-      alert(`💾 บันทึกข้อมูลประจำเดือน ${month} เรียบร้อยแล้ว!\nระบบเคลียร์หน้าจอให้พร้อมสำหรับเริ่มบันทึกใหม่ครับ`);
+      alert(`💾 บันทึกข้อมูลของ ${platform} ประจำเดือน ${month} เรียบร้อยแล้ว!`);
       
       setTopOrganic([]);
       setTopLike([]);
@@ -101,6 +111,16 @@ export default function Editor({ logout }) {
           </h1>
           
           <div className="flex flex-wrap items-center justify-center gap-2 md:gap-4 bg-neutral-900 p-2 rounded-lg border border-neutral-800 w-full lg:w-auto">
+            <select
+              value={platform}
+              onChange={(e) => setPlatform(e.target.value)}
+              className="bg-neutral-800 text-white p-2 outline-none cursor-pointer border border-neutral-700 rounded-md text-sm"
+            >
+              <option value="Facebook">Platform: Facebook</option>
+              <option value="Ig">Platform: Ig (Instagram)</option>
+              <option value="Tiktok">Platform: Tiktok</option>
+            </select>
+
             <input
               type="month"
               value={month}
@@ -131,32 +151,37 @@ export default function Editor({ logout }) {
           </div>
         </div>
 
-        {/* === Section 1: TOP Organic Posts === */}
+        {/* === Section 1: TOP Organic Posts (มีทุกอัน) === */}
         <RankingSection
-          title="🌱 1. เพิ่ม TOP Organic Posts"
+          title={`🌱 1. เพิ่ม TOP Organic Posts (${platform})`}
           list={topOrganic}
           setList={setTopOrganic}
           newItem={newOrganic}
           setNewItem={setNewOrganic}
         />
 
-        {/* === Section 2: Top Like Of Month === */}
-        <RankingSection
-          title="❤️ 2. เพิ่ม Top Like Of Month"
-          list={topLike}
-          setList={setTopLike}
-          newItem={newLike}
-          setNewItem={setNewLike}
-        />
+        {/* === Section 2 & 3: แสดงเฉพาะ Facebook ตามเงื่อนไข === */}
+        {platform === 'Facebook' && (
+          <>
+            {/* === Section 2: Top Like Of Month === */}
+            <RankingSection
+              title="❤️ 2. เพิ่ม Top Like Of Month"
+              list={topLike}
+              setList={setTopLike}
+              newItem={newLike}
+              setNewItem={setNewLike}
+            />
 
-        {/* === Section 3: Top Advertising (Ads) === */}
-        <AdsRankingSection
-          title="📢 3. เพิ่ม Top Advertising (Ads)"
-          list={topAds}
-          setList={setTopAds}
-          newItem={newAds}
-          setNewItem={setNewAds}
-        />
+            {/* === Section 3: Top Advertising (Ads) === */}
+            <AdsRankingSection
+              title="📢 3. เพิ่ม Top Advertising (Ads)"
+              list={topAds}
+              setList={setTopAds}
+              newItem={newAds}
+              setNewItem={setNewAds}
+            />
+          </>
+        )}
 
         {/* === Footer ปุ่มบันทึก === */}
         <div className="fixed bottom-0 left-0 w-full bg-[#0a0a0a]/90 backdrop-blur-md border-t border-neutral-800 p-4 md:p-6 flex justify-center z-50">
